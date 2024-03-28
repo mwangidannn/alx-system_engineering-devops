@@ -1,24 +1,39 @@
-#This a script that shows how to install nginx using puppet
+#!/usr/bin/env bash
+# Configure server using puppet
 
-package {'nginx':
-  ensure => 'present',
+# defines a Puppet class called nginx_server that 
+#  encapsulates the configuration for the Nginx server.
+class nginx_server {
+  package { 'nginx':
+    ensure => installed,
+  }
+
+#  manages the Nginx service.
+  service { 'nginx':
+    ensure => running,
+    enable => true,
+    require => Package['nginx'],
+  }
+# manages the Nginx configuration file located at /etc/nginx/sites-available/default.
+  file { '/etc/nginx/sites-available/default':
+    ensure  => present,
+    content => "
+      server {
+        listen      80 default_server;
+        listen      [::]:80 default_server;
+        root        /var/www/html;
+        index       index.html index.htm;
+
+        location / {
+          return 200 'Hello World!';
+        }
+
+        location /redirect_me {
+          return 301 http://cuberule.com/;
+        }
+      }
+    ",
+    notify => Service['nginx'],
+  }
 }
 
-exec {'install':
-  command  => 'sudo apt-get update ; sudo apt-get -y install nginx',
-  provider => shell,
-}
-
-exec {'Hello World!':
-  command  => 'echo "Hello World!" | sudo dd status=none of=/var/www/html/index.html',
-  provider => shell,
-}
-
-exec {'sudo sed -i "s/listen 80 default_server;/listen 80 default_server;\\n\\tlocation \/redirect_me {\\n\\t\\treturn 301 https:\/\/www.youtube.com\/;\\n\\t}/" /etc/nginx/sites-available/default':
-  provider => shell,
-}
-
-exec {'run':
-  command  => 'sudo service nginx restart',
-  provider => shell,
-}
